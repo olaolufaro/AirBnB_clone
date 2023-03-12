@@ -1,79 +1,60 @@
 #!/usr/bin/python3
-"""Unit testting for City"""
-
-import unittest
-import models
+"""Unit tests for the `city` module.
+"""
 import os
+import unittest
+from models.engine.file_storage import FileStorage
+from models import storage
 from models.city import City
+from datetime import datetime
+
+c1 = City()
+c2 = City(**c1.to_dict())
+c3 = City("hello", "wait", "in")
 
 
 class TestCity(unittest.TestCase):
-        """Test for City class"""
+    """Test cases for the `City` class."""
 
-        def test_docstring(self):
-            """This is a test to check if functions, classes and modules all have docstring"""
-            message = "Docstring is not present in function"
-            self.assertIsNotNone(models.city.__doc__, message)
-            message = "Docstring is not present in class"
-            self.assertIsNotNone(City.__doc__, message)
+    def setUp(self):
+        pass
 
-        def test_exec_file(self):
-            """Test to check if all files are executable"""
-            #Check if read access
-            read_true = os.access("models/city.py", os.R_OK)
-            self.assertTrue(read_true)
+    def tearDown(self) -> None:
+        """Resets FileStorage data."""
+        FileStorage._FileStorage__objects = {}
+        if os.path.exists(FileStorage._FileStorage__file_path):
+            os.remove(FileStorage._FileStorage__file_path)
 
-            #Check if write access
-            write_true = os.access("models/city.py", os.W_OK)
-            self.assertTrue(write_true)
+    def test_params(self):
+        """Test method for class attributes"""
+        k = f"{type(c1).__name__}.{c1.id}"
+        self.assertIsInstance(c1.name, str)
+        self.assertEqual(c3.name, "")
+        c1.name = "Abuja"
+        self.assertEqual(c1.name, "Abuja")
 
-            #Check for executable
-            exec_true = os.access("models/city.py", os.X_OK)
-            self.assertTrue(exec_true)
+    def test_init(self):
+        """Test method for public instances"""
+        self.assertIsInstance(c1.id, str)
+        self.assertIsInstance(c1.created_at, datetime)
+        self.assertIsInstance(c1.updated_at, datetime)
+        self.assertEqual(c1.updated_at, c2.updated_at)
 
-        def test_init_City(self):
-            """Test to check if object is City"""
-            check_City = City()
-            self.assertIsInstance(check_City, City)
+    def test_save(self):
+        """Test method for save"""
+        old_update = c1.updated_at
+        c1.save()
+        self.assertNotEqual(c1.updated_at, old_update)
 
-        def test_id(self):
-            """Check if the ids are unique, that is not the same"""
-            first_id = City()
-            second_id = City()
-            self.assertNotEqual(first_id, second_id)
-
-        def test_str(self):
-            """Check if the output is a string"""
-            str_obj = City()
-            dictionary = str_obj.__dict__
-            first_str = "[City] ({}) {}".format(str_obj.id, dictionary)
-            second_str = str(str_obj)
-            self.assertEqual(first_str, second_str)
-
-        def test_save(self):
-            """Check if date update is save"""
-            updated = City()
-            first_update = updated.updated_at
-            updated.save()
-            second_update = updated.updated_at
-            self.assertNotEqual(first_update, second_update)
-
-        def test_to_dict(self):
-            """Check if to_dict added a dictionary"""
-            original_model = City()
-            dict_model = original_model.to_dict()
-            self.assertIsInstance(dict_model, dict)
-            for key, value in dict_model.items():
-                check = 0
-                if dict_model['__class__'] == 'City':
-                    check+=1
-                self.assertTrue(check == 1)
-            for key, value in dict_model.items():
-                if key == "created_at":
-                    self.assertIsInstance(value, str)
-                if key == "updated_at":
-                    self.assertIsInstance(value, str)
+    def test_todict(self):
+        """Test method for dict"""
+        a_dict = c2.to_dict()
+        self.assertIsInstance(a_dict, dict)
+        self.assertEqual(a_dict['__class__'], type(c2).__name__)
+        self.assertIn('created_at', a_dict.keys())
+        self.assertIn('updated_at', a_dict.keys())
+        self.assertNotEqual(c1, c2)
 
 
-if __name__ == '__main__':
-        unittest.main()
+if __name__ == "__main__":
+    unittest.main()

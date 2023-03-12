@@ -1,82 +1,70 @@
 #!/usr/bin/python3
-"""Unit testting for Review"""
-
-import unittest
-import models
+"""Unit tests for the `review` module.
+"""
 import os
+import unittest
 from models.review import Review
+from models import storage
+from datetime import datetime
+from models.engine.file_storage import FileStorage
 
 
 class TestReview(unittest.TestCase):
-        """Test for Review class"""
+    """Test cases for the `Review` class."""
 
-        def test_docstring(self):
-            """This is a test to check if functions, classes and modules all have docstring"""
-            message = "Docstring is not present in function"
-            self.assertIsNotNone(models.review.__doc__, message)
-            message = "Docstring is not present in class"
-            self.assertIsNotNone(Review.__doc__, message)
+    def setUp(self):
+        pass
 
-        def test_exec_file(self):
-            """Test to check if all files are executable"""
-            #Check if read access
-            read_true = os.access("models/review.py", os.R_OK)
-            self.assertTrue(read_true)
+    def tearDown(self) -> None:
+        """Resets FileStorage data."""
+        FileStorage._FileStorage__objects = {}
+        if os.path.exists(FileStorage._FileStorage__file_path):
+            os.remove(FileStorage._FileStorage__file_path)
 
-            #Check if write access
-            write_true = os.access("models/review.py", os.W_OK)
-            self.assertTrue(write_true)
-            
-            #Check for executable
-            exec_true = os.access("models/review.py", os.X_OK)
-            self.assertTrue(exec_true)
+    def test_params(self):
+        """Test method for class attributes"""
 
-        def test_init_Review(self):
-            """Test to check if object is Review"""
-            check_Review = Review()
-            self.assertIsInstance(check_Review, Review)
+        r1 = Review()
+        r3 = Review("hello", "wait", "in")
+        k = f"{type(r1).__name__}.{r1.id}"
+        self.assertIsInstance(r1.text, str)
+        self.assertIsInstance(r1.user_id, str)
+        self.assertIsInstance(r1.place_id, str)
+        self.assertEqual(r3.text, "")
 
-        def test_id(self):
-            """Check if the ids are unique, that is not the same"""
-            first_id = Review()
-            second_id = Review()
-            self.assertNotEqual(first_id, second_id)
+    def test_init(self):
+        """Test method for public instances"""
+        r1 = Review()
+        r2 = Review(**r1.to_dict())
+        self.assertIsInstance(r1.id, str)
+        self.assertIsInstance(r1.created_at, datetime)
+        self.assertIsInstance(r1.updated_at, datetime)
+        self.assertEqual(r1.updated_at, r2.updated_at)
 
-        def test_str(self):
-            """Check if the output is a string"""
-            str_obj = Review()
-            dictionary = str_obj.__dict__
-            first_str = "[Review] ({}) {}".format(str_obj.id, dictionary)
-            second_str = str(str_obj)
-            self.assertEqual(first_str, second_str)
+    def test_str(self):
+        """Test method for str representation"""
+        r1 = Review()
+        string = f"[{type(r1).__name__}] ({r1.id}) {r1.__dict__}"
+        self.assertEqual(r1.__str__(), string)
 
-        def test_save(self):
-            """Check if date update is save"""
-            updated = Review()
-            first_update = updated.updated_at
-            updated.save()
-            second_update = updated.updated_at
-            self.assertNotEqual(first_update, second_update)
+    def test_save(self):
+        """Test method for save"""
+        r1 = Review()
+        old_update = r1.updated_at
+        r1.save()
+        self.assertNotEqual(r1.updated_at, old_update)
 
-        def test_to_dict(self):
-            """Check if to_dict added a dictionary"""
-            original_model = Review()
-            dict_model = original_model.to_dict()
-            self.assertIsInstance(dict_model, dict)
-            for key, value in dict_model.items():
-                check = 0
-                if dict_model['__class__'] == 'Review':
-                    check+=1
-                self.assertTrue(check == 1)
-            for key, value in dict_model.items():
-                if key == "created_at":
-                    self.assertIsInstance(value, str)
-                if key == "updated_at":
-                    self.assertIsInstance(value, str)
+    def test_todict(self):
+        """Test method for dict"""
+        r1 = Review()
+        r2 = Review(**r1.to_dict())
+        a_dict = r2.to_dict()
+        self.assertIsInstance(a_dict, dict)
+        self.assertEqual(a_dict['__class__'], type(r2).__name__)
+        self.assertIn('created_at', a_dict.keys())
+        self.assertIn('updated_at', a_dict.keys())
+        self.assertNotEqual(r1, r2)
 
 
-if __name__ == '__main__':
-        unittest.main()
-
-
-
+if __name__ == "__main__":
+    unittest.main()

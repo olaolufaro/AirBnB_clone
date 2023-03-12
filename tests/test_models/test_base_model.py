@@ -1,71 +1,101 @@
-#!/usr/bin/python3
-"""Unit testting for BaseModel"""
-
-import unittest
-import models
+"""Testing the `base_model` module."""
+import json
 import os
+import time
+import unittest
+import uuid
+from datetime import datetime
 from models.base_model import BaseModel
+from models.engine.file_storage import FileStorage
 
 
-class TestBaseModel(unittest.TestCase):
-    """Test for BaseModel class"""
+class TestBase(unittest.TestCase):
+    """Test cases for the `Base` class.
+    """
 
-    def test_docstring(self):
-        """This is a test to check if functions, classes and modules all have docstring"""
-        message = "Docstring is not present in function"
-        self.assertIsNotNone(models.base_model.__doc__, message)
-        message = "Docstring is not present in class"
-        self.assertIsNotNone(BaseModel.__doc__, message)
+    def setUp(self):
+        pass
 
-    def test_exec_file(self):
-        """Test to check if all files are executable"""
-        #Check if read access
-        read_true = os.access("models/base_model.py", os.R_OK)
-        self.assertTrue(read_true)
+    def tearDown(self) -> None:
+        """Resets FileStorage data."""
+        FileStorage._FileStorage__objects = {}
+        if os.path.exists(FileStorage._FileStorage__file_path):
+            os.remove(FileStorage._FileStorage__file_path)
 
-        #Check if write access
-        write_true = os.access("models/base_model.py", os.W_OK)
-        self.assertTrue(write_true)
+    def test_initialization_positive(self):
+        """Test passing cases `BaseModel` initialization.
+        """
+        b1 = BaseModel()
+        b2_uuid = str(uuid.uuid4())
+        b2 = BaseModel(id=b2_uuid, name="The weeknd", album="Trilogy")
+        self.assertIsInstance(b1.id, str)
+        self.assertIsInstance(b2.id, str)
+        self.assertEqual(b2_uuid, b2.id)
+        self.assertEqual(b2.album, "Trilogy")
+        self.assertEqual(b2.name, "The weeknd")
+        self.assertIsInstance(b1.created_at, datetime)
+        self.assertIsInstance(b1.created_at, datetime)
+        self.assertEqual(str(type(b1)),
+                         "<class 'models.base_model.BaseModel'>")
 
-        #Check for executable
-        exec_true = os.access("models/base_model.py", os.X_OK)
-        self.assertTrue(exec_true)
+    def test_dict(self):
+        """Test method for dict"""
+        b1 = BaseModel()
+        b2_uuid = str(uuid.uuid4())
+        b2 = BaseModel(id=b2_uuid, name="The weeknd", album="Trilogy")
+        b1_dict = b1.to_dict()
+        self.assertIsInstance(b1_dict, dict)
+        self.assertIn('id', b1_dict.keys())
+        self.assertIn('created_at', b1_dict.keys())
+        self.assertIn('updated_at', b1_dict.keys())
+        self.assertEqual(b1_dict['__class__'], type(b1).__name__)
+        with self.assertRaises(KeyError) as e:
+            b2.to_dict()
 
-    def test_init_BaseModel(self):
-        """Test to check if object is BaseModel"""
-        check_BaseModel = BaseModel()
-        self.assertIsInstance(check_BaseModel, BaseModel)
+    def test_save(self):
+        """Test method for save"""
+        b = BaseModel()
+        time.sleep(0.5)
+        date_now = datetime.now()
+        b.save()
+        diff = b.updated_at - date_now
+        self.assertTrue(abs(diff.total_seconds()) < 0.01)
 
-    def test_id(self):
-        """Check if the ids are unique, that is not the same"""
-        first_id = BaseModel()
-        second_id = BaseModel()
-        self.assertNotEqual(first_id, second_id)
+    def test_save_storage(self):
+        """Tests that storage.save() is called from save()."""
+        b = BaseModel()
+        b.save()
+        key = "{}.{}".format(type(b).__name__, b.id)
+        d = {key: b.to_dict()}
+        self.assertTrue(os.path.isfile(FileStorage._FileStorage__file_path))
+        with open(FileStorage._FileStorage__file_path,
+                  "r", encoding="utf-8") as f:
+            self.assertEqual(len(f.read()), len(json.dumps(d)))
+            f.seek(0)
+            self.assertEqual(json.load(f), d)
+
+    def test_save_no_args(self):
+        """Tests save() with no arguments."""
+        self.resetStorage()
+        with self.assertRaises(TypeError) as e:
+            BaseModel.save()
+        msg = "save() missing 1 required positional argument: 'self'"
+        self.assertEqual(str(e.exception), msg)
+
+    def test_save_excess_args(self):
+        """Tests save() with too many arguments."""
+        self.resetStorage()
+        with self.assertRaises(TypeError) as e:
+            BaseModel.save(self, 98)
+        msg = "save() takes 1 positional argument but 2 were given"
+        self.assertEqual(str(e.exception), msg)
 
     def test_str(self):
-        """Check if the output is a string"""
-        str_obj = BaseModel()
-        dictionary = str_obj.__dict__
-        first_str = "[BaseModel] ({}) {}".format(str_obj.id, dictionary)
-        second_str = str(str_obj)
-        self.assertEqual(first_str, second_str)
-
-    def test_to_dict(self):
-        """Check if to_dict added a dictionary"""
-        original_model = BaseModel()
-        dict_model = original_model.to_dict()
-        self.assertIsInstance(dict_model, dict)
-        for key, value in dict_model.items():
-            check = 0
-            if dict_model['__class__'] == 'BaseModel':
-                check+=1
-            self.assertTrue(check == 1)
-        for key, value in dict_model.items():
-            if key == "created_at":
-                self.assertIsInstance(value, str)
-            if key == "updated_at":
-                self.assertIsInstance(value, str)
+        """Test method for str representation"""
+        b1 = BaseModel()
+        string = f"[{type(b1).__name__}] ({b1.id}) {b1.__dict__}"
+        self.assertEqual(b1.__str__(), string)
 
 
-if __name__ == '__main__':
-        unittest.main()
+if __name__ == "__main__":
+    unittest.main()
